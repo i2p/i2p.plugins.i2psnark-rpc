@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="all" name="i2psnark-rpc">
+    <property name="i2pbase" value="../../i2p.i2p"/>
+    <property name="i2plib" value="${i2pbase}/build"/>
+    <property name="jettylib" value="${i2pbase}/apps/jetty/jettylib"/>
+    <path id="cp">
+        <pathelement path="${java.class.path}" />
+        <pathelement location="${i2plib}/i2p.jar" />
+        <pathelement location="${i2plib}/i2psnark.jar" />
+        <pathelement location="${jettylib}/javax.servlet.jar" />
+        <pathelement location="${jettylib}/jetty-i2p.jar" />
+    </path>
+
+    <target name="all" depends="clean, build" />
+    <target name="build" depends="war" />
+
+    <property name="javac.compilerargs" value="" />
+    <property name="javac.version" value="1.7" />
+
+    <target name="compile">
+        <mkdir dir="./build/obj" />
+        <javac 
+            srcdir="./java" 
+            debug="true" deprecation="on" source="${javac.version}" target="${javac.version}" 
+            destdir="./build/obj" 
+            includeAntRuntime="false"
+            classpathref="cp" >
+            <compilerarg line="${javac.compilerargs}" />
+        </javac>
+    </target>
+
+    <target name="war" depends="compile"> 
+        <copy todir="jsp" >
+            <fileset dir="../plugin" includes="licenses/*" />
+        </copy>
+        <war destfile="build/transmission.war.jar" webxml="jsp/WEB-INF/web.xml">
+            <classes dir="./build/obj" />
+            <fileset dir="jsp/" excludes="WEB-INF/" />
+        </war>
+    </target>
+    
+    <target name="clean">
+        <delete dir="./build" />
+        <delete dir="jsp/licenses" />
+    </target>
+
+    <target name="cleandep" depends="clean">
+    </target>
+    <target name="distclean" depends="clean">
+    </target>
+</project>

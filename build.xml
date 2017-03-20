@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project basedir="." default="all" name="i2psnark-rpc">
+    <property file="override.properties"/>
+   
+    <target name="all" depends="clean,plugin" />
+
+    <target name="war" >
+        <ant dir="src" target="build" />
+    </target>
+
+    <target name="plugin" depends="war"> 
+        <!-- get version number -->
+        <buildnumber file="scripts/build.number" />
+        <property name="release.number" value="0.1" />
+
+        <!-- make the update xpi2p -->
+        <copy file="LICENSE.txt" todir="plugin/" overwrite="true" />
+        <copy file="README.txt" todir="plugin/" overwrite="true" />
+        <copy file="scripts/plugin.config" todir="plugin/" overwrite="true" />
+        <exec executable="echo" osfamily="unix" failonerror="true" output="plugin/plugin.config" append="true">
+            <arg value="update-only=true" />
+        </exec>
+        <exec executable="echo" osfamily="unix" failonerror="true" output="plugin/plugin.config" append="true">
+            <arg value="version=${release.number}-b${build.number}" />
+        </exec>
+        <exec executable="pack200" failonerror="true">
+            <arg value="-g" />
+            <arg value="plugin/console/webapps/transmission.war.pack" />
+            <arg value="src/build/transmission.war.jar" />
+        </exec>
+        <input message="Enter su3 signing key password:" addproperty="release.password.su3" />
+        <fail message="You must enter a password." >
+            <condition>
+                <equals arg1="${release.password.su3}" arg2=""/>
+            </condition>
+        </fail>
+        <!-- this will fail if no su3 keys exist, as it needs the password twice -->
+        <exec executable="scripts/makeplugin.sh" inputstring="${release.password.su3}" failonerror="true" >
+            <arg value="plugin" />
+        </exec>
+        <move file="i2psnark-rpc.xpi2p" tofile="i2psnark-rpc-update.xpi2p" overwrite="true" />
+        <move file="i2psnark-rpc.su3" tofile="i2psnark-rpc-update.su3" overwrite="true" />
+
+        <!-- make the install xpi2p -->
+        <copy file="scripts/plugin.config" todir="plugin/" overwrite="true" />
+        <exec executable="echo" osfamily="unix" failonerror="true" output="plugin/plugin.config" append="true">
+            <arg value="version=${release.number}-b${build.number}" />
+        </exec>
+        <exec executable="scripts/makeplugin.sh" inputstring="${release.password.su3}" failonerror="true" >
+            <arg value="plugin" />
+        </exec>
+    </target>
+
+    <target name="distclean" depends="clean" />
+
+    <target name="clean" >
+        <ant dir="src" target="clean" />
+        <delete file="plugin/plugin.config" />
+        <delete file="plugin/console/webapps/transmission.war.pack" />
+        <delete file="plugin/LICENSE.txt" />
+        <delete file="plugin/README.txt" />
+        <delete file="plugin.zip" />
+        <delete file="i2psnark-rpc.xpi2p" />
+        <delete file="i2psnark-rpc-update.xpi2p" />
+        <delete file="i2psnark-rpc.su3" />
+        <delete file="i2psnark-rpc-update.su3" />
+    </target>
+
+</project>

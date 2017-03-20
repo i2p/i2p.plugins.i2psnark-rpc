@@ -1,0 +1,23 @@
+New code: GPLv2
+See licenses/LICENSE-GPLv2.txt
+
+Contains code from Vuze trunk and from xmwebui plugin,
+which includes code from Transmission and JSON-simple.
+
+Vuze Web Remote Plugin (xmwebui): GPLv2
+Modified from v0.6.5 from SVN
+Copyright 2009 Vuze, Inc.  All rights reserved.
+See licenses/LICENSE-GPLv2.txt
+
+Vuze: GPLv2
+Modified from v5.7.5.1 from SVN
+Copyright 2009 Vuze, Inc.  All rights reserved.
+See licenses/LICENSE-GPLv2.txt
+
+Transmission:
+Copyright (c) Transmission authors and contributors
+See licenses/Transmission.txt
+
+JSON:
+LGPLv2.1
+See licenses/JSON.txt
