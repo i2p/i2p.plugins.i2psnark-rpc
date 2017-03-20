@@ -11,15 +11,12 @@
     <target name="plugin" depends="war"> 
         <!-- get version number -->
         <buildnumber file="scripts/build.number" />
-        <property name="release.number" value="0.1" />
+        <property name="release.number" value="0.2" />
 
-        <!-- make the update xpi2p -->
+        <!-- we don't bother with an update plugin, everything is in a single war -->
         <copy file="LICENSE.txt" todir="plugin/" overwrite="true" />
         <copy file="README.txt" todir="plugin/" overwrite="true" />
         <copy file="scripts/plugin.config" todir="plugin/" overwrite="true" />
-        <exec executable="echo" osfamily="unix" failonerror="true" output="plugin/plugin.config" append="true">
-            <arg value="update-only=true" />
-        </exec>
         <exec executable="echo" osfamily="unix" failonerror="true" output="plugin/plugin.config" append="true">
             <arg value="version=${release.number}-b${build.number}" />
         </exec>
@@ -35,13 +32,7 @@
             </condition>
         </fail>
         <!-- this will fail if no su3 keys exist, as it needs the password twice -->
-        <exec executable="scripts/makeplugin.sh" inputstring="${release.password.su3}" failonerror="true" >
-            <arg value="plugin" />
-        </exec>
-        <move file="i2psnark-rpc.xpi2p" tofile="i2psnark-rpc-update.xpi2p" overwrite="true" />
-        <move file="i2psnark-rpc.su3" tofile="i2psnark-rpc-update.su3" overwrite="true" />
-
-        <!-- make the install xpi2p -->
+        <!-- make the install su3 -->
         <copy file="scripts/plugin.config" todir="plugin/" overwrite="true" />
         <exec executable="echo" osfamily="unix" failonerror="true" output="plugin/plugin.config" append="true">
             <arg value="version=${release.number}-b${build.number}" />

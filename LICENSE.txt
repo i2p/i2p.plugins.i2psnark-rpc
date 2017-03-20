@@ -18,6 +18,9 @@ Transmission:
 Copyright (c) Transmission authors and contributors
 See licenses/Transmission.txt
 
+Transmission/Vuze web UI:
+See licenses/LICENSE-GPLv2.txt
+
 JSON:
 LGPLv2.1
 See licenses/JSON.txt

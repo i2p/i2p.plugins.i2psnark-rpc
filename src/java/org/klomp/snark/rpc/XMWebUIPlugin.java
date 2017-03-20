@@ -907,9 +907,11 @@ XMWebUIPlugin {
             } else if ( method.equals( "torrent-rename-path" )) {
                 // RPC v15
                 method_Torrent_Rename_Path(args, result);
+*/
             } else if ( method.equals( "tags-get-list" )) {
                 // Vuze RPC v3
                 method_Tags_Get_List(args, result);
+/*
             } else if ( method.equals( "tags-lookup-start" )) {
                 method_Tags_Lookup_Start(args, result);
             } else if ( method.equals( "tags-lookup-get-results" )) {
@@ -1637,6 +1639,7 @@ XMWebUIPlugin {
         }
         map.put(id, o);
     }
+****/
 
     private void method_Tags_Get_List(Map args, Map result) {
         List fields = (List) args.get("fields");
@@ -1647,6 +1650,7 @@ XMWebUIPlugin {
         }
         List<SortedMap<String, Object>> listTags =
                 new ArrayList<SortedMap<String,Object>>();
+/****
         TagManager tm = TagManagerFactory.getTagManager();
         List<TagType> tagTypes = tm.getTagTypes();
         for (TagType tagType : tagTypes) {
@@ -1719,6 +1723,7 @@ XMWebUIPlugin {
                 listTags.add(map);
             }
         }
+****/
         String hc = Long.toHexString(longHashSimpleList(listTags));
         result.put("tags-hc", hc);
         String oldHC = MapUtils.getMapString(args, "tags-hc", null);
@@ -1726,7 +1731,6 @@ XMWebUIPlugin {
             result.put("tags", listTags);
         }
     }
-****/
 
 /*
    This method tests how much free space is available in a
@@ -3324,7 +3328,10 @@ XMWebUIPlugin {
                 // RPC v0
                 // activityDate                | number                      | tr_stat
                 //value = torrentGet_activityDate(core_download, true);
-                value = 0;
+                if (download.isStopped())
+                    value = 0L - (_context.clock().now() / 1000L);
+                else
+                    value = 0;
             } else if (field.equals("addedDate")) {
                 // RPC v0
                 // addedDate                   | number                      | tr_stat
@@ -3360,10 +3367,13 @@ XMWebUIPlugin {
             } else if (field.equals("creator")) {
                 // RPC v0
                 // creator                     | string                      | tr_info
-                if (t != null)
+                if (t != null) {
                     value = t.getCreatedBy();
-                else
-                    value = "";
+                    if (value == null)
+                        value = "??";
+                } else {
+                    value = "??";
+                }
             } else if (field.equals("dateCreated")) {
                 // RPC v0
                 // dateCreated                 | number                      | tr_info
@@ -3416,7 +3426,14 @@ XMWebUIPlugin {
                  * for this torrent. If you deleted the files and downloaded a second
                  * time, this will be 2*totalSize..
                  */
-                value = download.getDownloaded();
+                // we don't track that, just give them what we have...
+                // unless if magnet, then give them the downloaded count
+                long total = download.getTotalLength();
+                long needed = download.getRemainingLength();
+                if (total >= 0 && needed >= 0)
+                    value = total - needed;
+                else
+                    value = download.getDownloaded();
             } else if (field.equals("downloadLimit")
                     || field.equals("speed-limit-down")) {
                 // RPC v5 (alternate is from 'set' prior to v5 -- added for rogue clients)
@@ -3534,7 +3551,7 @@ XMWebUIPlugin {
                 if (needed >= 0)
                     value = needed;
                 else
-                    value = 16384;  // TODO
+                    value = 1;  // TODO
             } else if (field.equals("magnetLink")) {
                 // TODO RPC v7
                 // magnetLink                  | number                      | n/a
@@ -3611,15 +3628,19 @@ XMWebUIPlugin {
                     }
                     value = count;
                 }
-/*
             } else if (field.equals("percentDone")) {
                 // RPC v5
                 // percentDone                 | double                      | tr_stat
                 // How much has been downloaded of the files the user wants. This differs
                 // from percentComplete if the user wants only some of the torrent's files.
                 // Range is [0..1]
-                value = core_download.getStats().getPercentDoneExcludingDND() / 1000.0f;
-*/
+                long needed = download.getNeededLength();
+                if (needed < 0)
+                    needed = download.getRemainingLength();
+                if (needed < 0)
+                    needed = 1;  // TODO
+                long whenDone = download.getTotalLength() - download.getSkippedLength();
+                value = 1.0f - (needed / (float) whenDone);
             } else if (field.equals("pieces")) {
                 // RPC v5
                 value = torrentGet_pieces(download);
@@ -3637,12 +3658,13 @@ XMWebUIPlugin {
                     value = 16384;
             } else if (field.equals("priorities")) {
                 value = torrentGet_priorities(download);
-/*
             } else if (field.equals("queuePosition")) {
                 // RPC v14
                 // "queuePosition"       | number     position of this torrent in its queue [0...n)
+/*
                 value = core_download.getPosition();
 */
+                value = 0;
             } else if (field.equals("rateDownload")) {
                 // rateSnark (B/s)          | number                      | tr_stat
                 value = download.getDownloadRate();
@@ -3693,18 +3715,25 @@ XMWebUIPlugin {
                 value = download.getTotalLength() - download.getSkippedLength();
             } else if (field.equals("startDate")) {
                 // When the torrent was last started.
-                //value = stats.getTimeStarted() / 1000;
-                value = 0;
+                try {
+                    value = download.getStartedTime() / 1000L;
+                } catch (Throwable thr) {
+                    // plugin supported in 0.9.29-8, method added in 0.9.29-9
+                    value = 0;
+                }
             } else if (field.equals("status")) {
-                if (download.isStarting())
-                    value = TR_STATUS_DOWNLOAD_WAIT;
-                else if (download.isStopped())
+                if (download.isStarting()) {
+                    if (download.getRemainingLength() == 0)
+                        value = TR_STATUS_SEED_WAIT;
+                    else
+                        value = TR_STATUS_DOWNLOAD_WAIT;
+                } else if (download.isStopped())
                     value = TR_STATUS_STOPPED;
                 else if (download.isChecking())
                     value = TR_STATUS_CHECK;
                 else if (download.isAllocating())
-                    value = TR_STATUS_DOWNLOAD;
-                else if (download.getRemainingLength() <= 0)
+                    value = TR_STATUS_DOWNLOAD_WAIT;
+                else if (download.getRemainingLength() == 0)
                     value = TR_STATUS_SEED;
                 else
                     value = TR_STATUS_DOWNLOAD;
@@ -3727,6 +3756,7 @@ XMWebUIPlugin {
                 value = download.getName();
             } else if (field.equals("uploadedEver")) {
                 // uploadedEver                | number                      | tr_stat
+                // we don't persist this, just give them what we have sent this time
                 value = download.getUploaded();
             } else if (field.equals("uploadLimit") || field.equals("speed-limit-up")) {
                 // RPC v5 (alternate is from 'set' prior to v5 -- added for rogue clients)
@@ -3870,8 +3900,8 @@ XMWebUIPlugin {
                  *   }
                  * }
                  */
-/*
             } else if (field.equals("tag-uids")) {
+/*
                 // azRPC
                 List<Long> listTags = new ArrayList<Long>();
                 TagManager tm = TagManagerFactory.getTagManager();
@@ -3892,6 +3922,7 @@ XMWebUIPlugin {
                 }
                 value = listTags;
 */
+                value = Collections.EMPTY_LIST;
             } else {
                 if ( trace_param ) {
                     log("Unhandled get-torrent field: " + field);
@@ -4176,7 +4207,9 @@ XMWebUIPlugin {
         String name = t.getAnnounce();
         if (name == null)
             name = download.getTrackerURL();  // from magnet URL
-        if (name != null) {
+        List<List<String>> alist = t.getAnnounceList();
+        // don't add the primary if we have a list
+        if (name != null && (alist == null || alist.isEmpty())) {
             if (hack && !name.contains("://")) {
                 name = "://" + name;
             }
@@ -4190,7 +4223,6 @@ XMWebUIPlugin {
             map.put("tier", tier++);
             trackers.add(map);
         }
-        List<List<String>> alist = t.getAnnounceList();
         if (alist != null && !alist.isEmpty()) {
             for (List<String> alist2 : alist) {
                 for (String name2 : alist2) {
@@ -4539,33 +4571,6 @@ XMWebUIPlugin {
 ****/
 
     /**
-     * The last time we uploaded or downloaded piece data on this torrent.
-     */
-/****
-    private Object torrentGet_activityDate(SnarkManager download, boolean relative) {
-        int state = download.getState();
-        if (state == SnarkManager.STATE_SEEDING || state == SnarkManager.STATE_DOWNLOADING) {
-            int r = download.getStats().getTimeSinceLastDataReceivedInSeconds();
-            int s = download.getStats().getTimeSinceLastDataSentInSeconds();
-            long l;
-            if (r > 0 && s > 0) {
-                l = Math.min(r, s);
-            } else if (r < 0) {
-                l = s;
-            } else {
-                l = r;
-            }
-            if (relative) {
-                return -l;
-            }
-            // XXX THIS IS STUPID!  Time on this machine won't be the same as the client..
-            return (_context.clock().now() / 1000) - l;
-        }
-        return 0;
-    }
-****/
-
-    /**
      * True if the torrent is running, but has been idle for long enough
      * to be considered stalled.
      */
@@ -4606,7 +4611,14 @@ XMWebUIPlugin {
             boolean isDownloadingFrom = !peer.isChoked() && dlRate > 0;
             boolean isUploadingTo = !peer.isChoking() && ulRate > 0;
             Destination dest = peer.getDestination();
-            String b32 = (dest != null) ? dest.toBase32() : "";
+            String b32;
+            if (dest != null) {
+                b32 = dest.toBase32();
+                // sadly, only about 25 chars fit nicely in the UI.
+                b32 = b32.substring(0, 12) + "..." + b32.substring(48);
+            } else {
+                b32 = "";
+            }
             map.put("address", b32);
             String client = UIUtil.getClientName(peer.getPeerID());
             map.put("clientName", client);
@@ -4630,14 +4642,14 @@ XMWebUIPlugin {
                 flagStr.append('D');
             } else if (peer.isInteresting()) {
                 flagStr.append('d');
-            } else if (peer.isChoked()) {
+            } else if (!peer.isChoked()) {
                 flagStr.append('K');
             }
             if (isUploadingTo) {
                 flagStr.append('U');
             } else if (peer.isInterested()) {
                 flagStr.append('u');
-            } else if (peer.isChoking()) {
+            } else if (!peer.isChoking()) {
                 flagStr.append('?');
             }
             flagStr.append('E');
