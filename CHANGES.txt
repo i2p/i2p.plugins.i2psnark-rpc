@@ -1,2 +1,16 @@
+* 2017-03-21 0.2
+  - Implement percentDone
+  - Implement startDate, requires 0.9.29-9
+  - Return empty values for tag-uids and tag-get-list
+  - Fix values for activityDateRelative and downloadedEver
+  - Fix status flags for choking/choked
+  - Set status correctly for a starting seeder and for magnet
+  - Return ?? for creator if not defined
+  - Shorten peer address so it will fit in UI
+  - Don't add primary tracker if we have a list, to not dup
+  - Set size to 1 for magnet download
+  - Don't build update version of plugin
+  - Add license description for Transmission UI
+
 * 2017-03-20 0.1
-  - Initial version
+  - Initial version, requires 0.9.29-8
