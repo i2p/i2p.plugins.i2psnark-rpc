@@ -3320,6 +3320,9 @@ XMWebUIPlugin {
                 // downloadDir                 | string                      | tr_torrent
                 if (storage != null) {
                     value = storage.getBase().getAbsolutePath();
+                } else {
+                    //value = "TBD";
+                    value = _manager.getDataDir().getAbsolutePath();
                 }
             } else if (field.equals("downloadedEver")) {
                 // RPC v0
@@ -3540,10 +3543,12 @@ XMWebUIPlugin {
                 long needed = download.getNeededLength();
                 if (needed < 0)
                     needed = download.getRemainingLength();
-                if (needed < 0)
-                    needed = 1;  // TODO
-                long whenDone = download.getTotalLength() - download.getSkippedLength();
-                value = 1.0f - (needed / (float) whenDone);
+                if (needed < 0) {
+                    value = 0.0f;
+                } else {
+                    long whenDone = download.getTotalLength() - download.getSkippedLength();
+                    value = 1.0f - (needed / (float) whenDone);
+                }
             } else if (field.equals("pieces")) {
                 // RPC v5
                 value = torrentGet_pieces(download);
@@ -5339,176 +5344,6 @@ XMWebUIPlugin {
             return( false );
         }
     }
-
-/****
-    private class
-    MagnetDownload
-        implements Snark
-    {
-        private URL                magnet_url;
-        private String            name;
-        private byte[]            hash;
-        private long            create_time;
-        private Map<TorrentAttribute,Long>    attributes = new HashMap<TorrentAttribute, Long>();
-        private String temp_dir = _util.getTempDir().getAbsolutePath();
-        private Throwable error;
-
-        private
-        MagnetDownload(
-            URL        _magnet,
-            String friendlyName )
-        {
-            create_time    = _context.clock().now();
-            magnet_url    = _magnet;
-            String    str = magnet_url.toExternalForm();
-            int    pos = str.indexOf( '?' );
-            if ( pos != -1 ) {
-                str = str.substring( pos+1 );
-            }
-            String[]    args = str.split( "&" );
-            Map<String,String>    arg_map = new HashMap<String,String>();
-            for ( String arg: args ) {
-                String[] bits = arg.split( "=" );
-                if ( bits.length == 2 ) {
-                    try {
-                        String lhs = bits[0].trim().toLowerCase( Locale.US );
-                        String rhs = URLDecoder.decode( bits[1].trim(), "UTF-8");
-                        if ( lhs.equals( "xt" )) {
-                            if ( rhs.toLowerCase( Locale.US ).startsWith( "urn:btih:" )) {
-                                arg_map.put( lhs, rhs );
-                            } else {
-                                String existing = arg_map.get( "xt" );
-                                if (     existing == null ||
-                                        ( !existing.toLowerCase( Locale.US ).startsWith( "urn:btih:" )  && rhs.startsWith( "urn:sha1:" ))) {
-                                    arg_map.put( lhs, rhs );
-                                }
-                            }
-                        } else {
-                            arg_map.put( lhs, rhs );
-                        }
-                    } catch( Throwable e ) {
-                    }
-                }
-            }
-            hash    = new byte[0];
-            String hash_str = arg_map.get( "xt" );
-            if ( hash_str != null ) {
-                hash_str = hash_str.toLowerCase( Locale.US );
-                if ( hash_str.startsWith( "urn:btih:" ) || hash_str.startsWith( "urn:sha1" )) {
-                    hash = UrlUtils.decodeSHA1Hash( hash_str.substring( 9 ));
-                }
-            }
-            name    = arg_map.get( "dn" );
-            if ( name == null ) {
-                if ( friendlyName != null ) {
-                    name = friendlyName;
-                } else if ( hash == null ) {
-                    name = magnet_url.toExternalForm();
-                } else {
-                    name = Base32.encode( hash );
-                }
-            }
-            name = "Magnet download for '" + name + "'";
-            getID( this, true );
-        }
-
-        private long
-        getCreateTime()
-        {
-            return( create_time );
-        }
-
-        private URL
-        getMagnetURL()
-        {
-            return( magnet_url );
-        }
-
-        public boolean
-        isStub()
-        {
-            return( true );
-        }
-
-        public Snark
-        destubbify()
-            throws DownloadException
-        {
-            throw( new DownloadException( "Not supported" ));
-        }
-
-        public String
-        getName()
-        {
-            return( name );
-        }
-
-        public byte[]
-        getInfoHash()
-        {
-            return( hash );
-        }
-
-        public MetaInfo
-        getTorrent()
-        {
-            return( null );
-        }
-
-        public long
-        getTorrentSize()
-        {
-            return( 16*1024 );    // dont know the size
-        }
-
-        public String
-        getSavePath()
-        {
-            return( temp_dir );
-        }
-
-        private void
-        setError(
-            Throwable e )
-        {
-            error    = e;
-        }
-
-        private Throwable
-        getError()
-        {
-            return( error );
-        }
-
-        public SnarkFile[]
-        getStubFiles()
-        {
-            return( new SnarkFile[0]);
-        }
-
-        public long
-        getLongAttribute(
-            TorrentAttribute     attribute )
-        {
-            Long l = attributes.get( attribute );
-            return( l==null?0:l );
-        }
-
-        public void
-        setLongAttribute(
-            TorrentAttribute     attribute,
-            long                 value)
-        {
-            attributes.put( attribute, value );
-        }
-
-        public void
-        remove()
-            throws DownloadException
-        {
-        }
-    }
-****/
 
     /**
      *  Copied from Vuze UrlUtils.java
