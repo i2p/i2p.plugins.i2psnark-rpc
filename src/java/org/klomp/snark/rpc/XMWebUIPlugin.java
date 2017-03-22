@@ -19,6 +19,7 @@
  */
 package org.klomp.snark.rpc;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -31,6 +32,7 @@ import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,6 +42,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -61,11 +64,13 @@ import net.i2p.data.Base64;
 import net.i2p.data.Destination;
 import net.i2p.servlet.RequestWrapper;
 import net.i2p.util.Log;
+import net.i2p.util.SecureFile;
 
 import org.gudy.azureus2.plugins.download.DownloadException;
 
 import org.klomp.snark.BitField;
 import org.klomp.snark.I2PSnarkUtil;
+import org.klomp.snark.MagnetURI;
 import org.klomp.snark.MetaInfo;
 import org.klomp.snark.Peer;
 import org.klomp.snark.PeerID;
@@ -833,13 +838,11 @@ XMWebUIPlugin {
                 method_Session_Get(args, result);
             } else if ( method.equals( "session-stats" )) {
                 method_Session_Stats(args, result);
-/****
             } else if ( method.equals( "torrent-add" )) {
-                String agent = MapUtils.getMapString(request.getHeaders(), "User-Agent", "");
-                boolean xmlEscape = agent.startsWith("Mozilla/");
+                String agent = request.getHeader("User-Agent");
+                boolean xmlEscape = agent != null && agent.startsWith("Mozilla/");
                 method_Torrent_Add(args, result, xmlEscape);
                 // this is handled within the torrent-add method: save_core_state = true;
-****/
             } else if ( method.equals( "torrent-start-all" )) {
                 checkUpdatePermissions();
                 _manager.startAllTorrents();
@@ -2915,7 +2918,6 @@ XMWebUIPlugin {
                                form of one of 3.3's tr_info objects with the
                                fields for id, name, and hashString.
          */
-/****
     private void
     method_Torrent_Add(
         final Map args,
@@ -2927,46 +2929,41 @@ XMWebUIPlugin {
         String metainfoString = (String) args.get("metainfo");
         byte[]    metainfoBytes = null;
         if ( metainfoString != null ) {
-            metainfoBytes = Base64.decode( metainfoString.replaceAll("[\r\n]+", "") );
-            //metainfoBytes = Base64.decode( metainfoString );
-            VuzeFileHandler vfh = VuzeFileHandler.getSingleton();
-            if ( vfh != null ) {
-                VuzeFile vf = vfh.loadVuzeFile( metainfoBytes );
-                if ( vf != null ) {
-                      VuzeFileComponent[] comps = vf.getComponents();
-                    for ( VuzeFileComponent comp: comps ) {
-                        if ( comp.getType() != VuzeFileComponent.COMP_TYPE_METASEARCH_TEMPLATE ) {
-                            throw( new TextualException( "Unsupported Vuze File component type: " + comp.getTypeName()));
-                        }
-                    }
-                      vfh.handleFiles( new VuzeFile[]{ vf }, VuzeFileComponent.COMP_TYPE_METASEARCH_TEMPLATE );
-                      String added_templates = "";
-                      for ( VuzeFileComponent comp: comps ) {
-                          if ( comp.isProcessed()) {
-                              Engine e = (Engine)comp.getData( Engine.VUZE_FILE_COMPONENT_ENGINE_KEY );
-                              if ( e != null ) {
-                                  added_templates += (added_templates==""?"":", ") + e.getName();
-                              }
-                          }
-                      }
-                      if ( added_templates.length() == 0 ) {
-                          throw( new TextualException( "No search template(s) added" ));
-                      } else {
-                          throw( new TextualException( "Installed search template(s): " + added_templates ));
-                      }
-                }
-            }
+            metainfoBytes = Base64.decode( metainfoString.replaceAll("[\r\n]+", ""), true );
+            if (metainfoBytes == null)
+                throw new TextualException("bad metainfo base64");
         }
-        Snark         torrent = null;
+        MetaInfo torrent = null;
         Snark    download = null;
         String url = (String) args.get("filename");
         final boolean add_stopped = getBoolean(args.get("paused"));
         String download_dir = (String) args.get("download-dir");
-        final File file_Download_dir = download_dir == null ? null : new File(download_dir);
+        final File file_Download_dir = download_dir == null ? null : new SecureFile(download_dir);
+        if (file_Download_dir != null) {
+            // This code is copied from I2PSnarkServlet
+            if (!file_Download_dir.isAbsolute()) {
+                throw new TextualException(_t("Data directory must be an absolute path") + ": " + file_Download_dir);
+            }
+            if (!file_Download_dir.isDirectory() && !file_Download_dir.mkdirs()) {
+                throw new TextualException(_t("Data directory cannot be created") + ": " + file_Download_dir);
+            }
+            Collection<Snark> snarks = _manager.getTorrents();
+            for (Snark s : snarks) {
+                Storage storage = s.getStorage();
+                if (storage == null)
+                    continue;
+                File sbase = storage.getBase();
+                if (UIUtil.isParentOf(sbase, file_Download_dir)) {
+                    throw new TextualException(_t("Cannot add torrent {0} inside another torrent: {1}",
+                                               file_Download_dir.getAbsolutePath(), sbase));
+                }
+            }
+        }
         // peer-limit not used
         //getNumber(args.get("peer-limit"), 0);
         // bandwidthPriority not used
         //getNumber(args.get("bandwidthPriority"), TR_PRI_NORMAL);
+/****
         final DownloadWillBeAddedListener add_listener =
             new DownloadWillBeAddedListener() {
                 public void initialised(Snark download) {
@@ -3012,6 +3009,7 @@ XMWebUIPlugin {
                                     DiskManagerFileInfo.PRIORITY_LOW);
                         }
                     }
+
                     // don't need priority-normal if they are normal by default.
                     // handle initial categories/tags
                     try {
@@ -3038,164 +3036,52 @@ XMWebUIPlugin {
                     }
                 }
             };
-        TorrentManager torrentManager = plugin_interface.getTorrentManager();
+****/
         boolean duplicate = false;
         if ( metainfoBytes != null ) {
-            try {
-                torrent = torrentManager.createFromBEncodedData( metainfoBytes);
-                SnarkManager dm = _manager;
-                download = dm.getDownload( torrent );
-                duplicate = download != null;
-            } catch (Throwable e) {
-                e.printStackTrace();
-                //System.err.println("decode of " + new String(Base64.encode(metainfoBytes), "UTF8"));
-                throw (new IOException("torrent download failed: "
-                        + Debug.getNestedExceptionMessage(e)));
+            torrent = new MetaInfo(new ByteArrayInputStream(metainfoBytes));
+            download = _manager.getTorrentByInfoHash(torrent.getInfoHash());
+            duplicate = download != null;
+            if ( download == null ) {
+                boolean success = _manager.addTorrent( torrent, null, null, file_Download_dir, add_stopped );
+                if (success)
+                    download = _manager.getTorrentByInfoHash(torrent.getInfoHash());
             }
         } else if (url == null) {
             throw (new IOException("url missing"));
         } else {
             url = url.trim().replaceAll(" ", "%20");
-            // hack due to core bug - have to add a bogus arg onto magnet uris else they fail to parse
-            String lc_url = url.toLowerCase( Locale.US );
-            if ( lc_url.startsWith("magnet:")) {
-                url += "&dummy_param=1";
-            } else if (!lc_url.startsWith("http")) {
-                url = UrlUtils.parseTextForURL(url, true, true);
-            }
             byte[] hashFromMagnetURI = getHashFromMagnetURI(url);
             if (hashFromMagnetURI != null) {
-                org.gudy.azureus2.plugins.download.SnarkManager dm = _manager;
-                download = dm.getDownload(hashFromMagnetURI);
+                download = _manager.getTorrentByInfoHash(hashFromMagnetURI);
                 duplicate = download != null;
             }
             if (download == null) {
-            URL torrent_url;
-            try {
-             torrent_url = new URL(url);
-            } catch (MalformedURLException mue) {
-                throw new TextualException("The torrent URI was not valid");
-            }
-            try {
-                final TorrentDownloader dl = torrentManager.getURLDownloader(torrent_url, null, null);
-                Object cookies = args.get("cookies");
-                if ( cookies != null ) {
-                    dl.setRequestProperty("URL_Cookie", cookies);
-                }
-                boolean is_magnet = torrent_url.getProtocol().equalsIgnoreCase( "magnet" );
-                if ( is_magnet ) {
-                    TimerEvent    magnet_event = null;
-                    final Object[]    f_result = { null };
-                    try {
-                        final AESemaphore sem = new AESemaphore( "magnetsem" );
-                        final URL f_torrent_url = torrent_url;
-                        final String f_name = (String) args.get("name");
-                        magnet_event = SimpleTimer.addEvent(
-                            "magnetcheck",
-                            _context.clock().getOffsetTime( 10*1000 ),
-                            new TimerEventPerformer()
-                            {
-                                public void
-                                perform(
-                                    TimerEvent event )
-                                {
-                                    synchronized( f_result ) {
-                                        if ( f_result[0] != null ) {
-                                            return;
-                                        }
-                                        MagnetSnark magnet_download = new MagnetDownload( f_torrent_url, f_name );
-                                        byte[]    hash = magnet_download.getInfoHash();
-                                        synchronized( magnet_downloads ) {
-                                            boolean    duplicate = false;
-                                            Iterator<MagnetDownload> it =  magnet_downloads.iterator();
-                                            while( it.hasNext()) {
-                                                MagnetSnark md = it.next();
-                                                if ( hash.length > 0 && Arrays.equals( hash, md.getInfoHash())) {
-                                                    if ( md.getError() == null ) {
-                                                        duplicate = true;
-                                                        magnet_download = md;
-                                                        break;
-                                                    } else {
-                                                        it.remove();
-                                                        addRecentlyRemoved( md );
-                                                    }
-                                                }
-                                            }
-                                            if ( !duplicate ) {
-                                                magnet_downloads.add( magnet_download );
-                                            }
-                                        }
-                                        f_result[0] = magnet_download;
-                                    }
-                                    sem.release();
-                                }
-                            });
-                        new AEThread2( "magnetasync" )
-                        {
-                            public void
-                            run()
-                            {
-                                try {
-                                    MetaInfo torrent = dl.download("UTF-8");
-                                    synchronized( f_result ) {
-                                        if ( f_result[0] == null ) {
-                                            f_result[0] = torrent;
-                                        } else {
-                                            MagnetSnark md = (MagnetDownload)f_result[0];
-                                            boolean    already_removed;
-                                            synchronized( magnet_downloads ) {
-                                                already_removed = !magnet_downloads.remove( md );
-                                            }
-                                            if ( !already_removed ) {
-                                                addRecentlyRemoved( md );
-                                                addTorrent( torrent, file_Download_dir, add_stopped, add_listener );
-                                            }
-                                        }
-                                    }
-                                } catch( Throwable e ) {
-                                    synchronized( f_result ) {
-                                        if ( f_result[0] == null ) {
-                                            f_result[0] = e;
-                                        } else {
-                                            MagnetSnark md = (MagnetDownload)f_result[0];
-                                            md.setError( e );
-                                        }
-                                    }
-                                } finally {
-                                    sem.release();
-                                }
-                            }
-                        }.start();
-                        sem.reserve();
-                        Object res;
-                        synchronized( f_result ) {
-                            res = f_result[0];
-                        }
-                        if ( res instanceof Snark ) {
-                            torrent = (Torrent)res;
-                        } else if ( res instanceof Throwable ) {
-                            throw((Throwable)res);
-                        } else {
-                            download     = (MagnetDownload)res;
-                            torrent        = null;
-                        }
-                    } finally {
-                        if ( magnet_event != null ) {
-                            magnet_event.cancel();
-                        }
-                    }
+                // This code is copied from I2PSnarkServlet
+                if (url.startsWith("http://")) {
+                    download = new FetchAndAdd(_context, _manager, url, file_Download_dir);
+                    _manager.addDownloader(download);
                 } else {
-                    torrent = dl.download("UTF-8");
+                    if (url.startsWith(MagnetURI.MAGNET) || url.startsWith(MagnetURI.MAGGOT)) {
+                        addMagnet(url, file_Download_dir);
+                    } else if (url.length() == 40 && url.replaceAll("[a-fA-F0-9]", "").length() == 0) {
+                        // hex
+                        url = url.toUpperCase(Locale.US);
+                        addMagnet(MagnetURI.MAGNET_FULL + url, file_Download_dir);
+                    } else if (url.length() == 32 && url.replaceAll("[a-zA-Z2-7]", "").length() == 0) {
+                        // b32
+                        url = url.toUpperCase(Locale.US);
+                        addMagnet(MagnetURI.MAGNET_FULL + url, file_Download_dir);
+                    } else {
+                        throw new TextualException("The torrent URI was not valid");
+                    }
+                    download = _manager.getTorrentByInfoHash(hashFromMagnetURI);
+                    if (download == null)
+                        throw new TextualException("Magnet add failed");  //shouldn't happen
                 }
-            } catch( Throwable e ) {
-                e.printStackTrace();
-                throw( new IOException( Debug.getNestedExceptionMessage( e )));
-            }
             }
         }
-        if ( download == null ) {
-            download = addTorrent( torrent, file_Download_dir, add_stopped, add_listener );
-        }
+        // download must be non-null here, either the new torrent or the old duplicate
         Map<String, Object> torrent_details = new HashMap<String, Object>();
         torrent_details.put("id", new Long(getID(download, true)));
         torrent_details.put("name", xmlEscape ? escapeXML(download.getName()) : download.getName());
@@ -3204,15 +3090,32 @@ XMWebUIPlugin {
         result.put(duplicate ? "torrent-duplicate" : "torrent-added", torrent_details);
     }
 
-    private static byte[] getHashFromMagnetURI(String magnetURI) {
-        Pattern patXT = Pattern.compile("xt=urn:(?:btih|sha1):([^&]+)");
-        Matcher matcher = patXT.matcher(magnetURI);
-        if (matcher.find()) {
-            return UrlUtils.decodeSHA1Hash(matcher.group(1));
+    private byte[] getHashFromMagnetURI(String magnetURI) {
+        try {
+            MagnetURI magnet = new MagnetURI(_util, magnetURI);
+            return magnet.getInfoHash();
+        } catch (IllegalArgumentException iae) {
+            return null;
         }
-        return null;
     }
-****/
+
+    /**
+     *  Copied from I2PSnarkServlet
+     *  @param url in base32 or hex
+     *  @param dataDir null to default to snark data directory
+     *  @since 0.8.4
+     */
+    private void addMagnet(String url, File dataDir) {
+        try {
+            MagnetURI magnet = new MagnetURI(_util, url);
+            String name = magnet.getName();
+            byte[] ih = magnet.getInfoHash();
+            String trackerURL = magnet.getTrackerURL();
+            _manager.addMagnet(name, ih, trackerURL, true, dataDir);
+        } catch (IllegalArgumentException iae) {
+            throw new TextualException(_t("Invalid magnet URL {0}", url));
+        }
+    }
 
     private Map
     method_Torrent_Get(
@@ -3712,7 +3615,7 @@ XMWebUIPlugin {
                  * if only some of the torrent's files are wanted.
                  * [0...tr_info.totalSize]
                  **/
-                value = download.getTotalLength() - download.getSkippedLength();
+                value = Math.max(download.getTotalLength() - download.getSkippedLength(), 1L);
             } else if (field.equals("startDate")) {
                 // When the torrent was last started.
                 try {
@@ -3749,7 +3652,7 @@ XMWebUIPlugin {
                 boolean hack = agent != null && agent.contains("httpok"); // Torrnado
                 value = torrentGet_trackers(download, hack);
             } else if (field.equals("totalSize")) {
-                value = download.getTotalLength();
+                value = Math.max(download.getTotalLength(), 1L);
             } else if (field.equals("torrentFile")) {
                 // torrentFile                 | string                      | tr_info
                 // Path to torrent
@@ -5654,6 +5557,16 @@ XMWebUIPlugin {
     /** translate */
     private String _t(String s) {
         return _util.getString(s);
+    }
+
+    /** translate */
+    private String _t(String s, Object o) {
+        return _util.getString(s, o);
+    }
+
+    /** translate */
+    private String _t(String s, Object o, Object o2) {
+        return _util.getString(s, o, o2);
     }
 
     protected void log(String str) {

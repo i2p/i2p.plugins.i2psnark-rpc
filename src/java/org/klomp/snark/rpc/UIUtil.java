@@ -1,5 +1,10 @@
 package org.klomp.snark.rpc;
 
+import java.io.File;
+import java.io.IOException;
+
+import net.i2p.data.DataHelper;
+
 import org.klomp.snark.PeerID;
 
 /**
@@ -83,5 +88,70 @@ class UIUtil {
             buf.append(val);
         }
         return buf.toString();
+    }
+
+    /**
+     *  Is "a" equal to "b",
+     *  or is "a" a directory and a parent of file or directory "b",
+     *  canonically speaking?
+     *
+     *  @since 0.9.15
+     */
+    public static boolean isParentOf(File a, File b) {
+        try {
+            a = a.getCanonicalFile();
+            b = b.getCanonicalFile();
+        } catch (IOException ioe) {
+            return false;
+        }
+        if (a.equals(b))
+            return true;
+        if (!a.isDirectory())
+            return false;
+        // easy case
+        if (!b.getPath().startsWith(a.getPath()))
+            return false;
+        // dir by dir
+        while (!a.equals(b)) {
+            b = b.getParentFile();
+            if (b == null)
+                return false;
+        }
+        return true;
+    }
+    
+    /**
+     * This is for a full URL. For a path only, use encodePath().
+     * @since 0.7.14
+     */
+    static String urlify(String s) {
+        return urlify(s, 100);
+    }
+    
+    /**
+     * This is for a full URL. For a path only, use encodePath().
+     * @since 0.9
+     */
+    private static String urlify(String s, int max) {
+        StringBuilder buf = new StringBuilder(256);
+        // browsers seem to work without doing this but let's be strict
+        String link = urlEncode(s);
+        String display;
+        if (s.length() <= max)
+            display = DataHelper.escapeHTML(link);
+        else
+            display = DataHelper.escapeHTML(s.substring(0, max)) + "&hellip;";
+        buf.append("<a href=\"").append(link).append("\">").append(display).append("</a>");
+        return buf.toString();
+    }
+    
+    /**
+     * This is for a full URL. For a path only, use encodePath().
+     * @since 0.8.13
+     */
+    private static String urlEncode(String s) {
+        return s.replace(";", "%3B").replace("&", "&amp;").replace(" ", "%20")
+                .replace("<", "%3C").replace(">", "%3E")
+                .replace("[", "%5B").replace("]", "%5D");
     }
 }
