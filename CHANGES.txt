@@ -1,3 +1,10 @@
+* 2017-03-23 0.3
+  - Implement torrent-add
+  - Fix stats for magnets and downloads
+  - Replace logo
+  - Hide search button, doesn't work
+  - Rename console link
+
 * 2017-03-21 0.2
   - Implement percentDone
   - Implement startDate, requires 0.9.29-9
