@@ -1,3 +1,6 @@
+* 2017-03-26 0.4
+  - Fixes for Sonarr
+
 * 2017-03-23 0.3
   - Implement torrent-add
   - Fix stats for magnets and downloads

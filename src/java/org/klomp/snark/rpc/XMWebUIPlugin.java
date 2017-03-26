@@ -425,7 +425,7 @@ XMWebUIPlugin {
     generateSupport(HttpServletRequest request, HttpServletResponse response) throws IOException {
         boolean logit = trace_param;
         if (logit) {
-            log("-> " + request.getServletPath());
+            log("-> " + request.getMethod() + ' ' + request.getServletPath());
             String qs = request.getQueryString();
             if (qs != null)
                 log( "-> query: " + qs);
@@ -440,10 +440,6 @@ XMWebUIPlugin {
             response.setStatus( 415 );
             return true;
         }
-        if (!request.getMethod().equals("POST")) {
-            response.setStatus( 405 );
-            return true;
-        }
         try {
             String session_id = getSessionID( request );
             // Set cookie just in case client is looking for one..
@@ -456,6 +452,12 @@ XMWebUIPlugin {
                 response.setContentType( "text/plain; charset=UTF-8" );
                 response.setStatus( 409 );
                 response.getOutputStream().write("You_didn_t_set_the_X-Transmission-Session-Id".getBytes());
+                return true;
+            }
+            if (!request.getMethod().equals("POST")) {
+                // Sonarr does a GET for testing and to get the 409, shouldn't go past here
+                response.setContentType("text/plain; charset=UTF-8");
+                response.setStatus(200);
                 return true;
             }
             String session_id_plus = session_id;
@@ -1925,7 +1927,8 @@ XMWebUIPlugin {
         result.put( "rpc-version-minimum", Long.valueOf(6));          // number     the minimum RPC API version supported
         result.put( "seedRatioLimit", Double.valueOf(100.0) );              // double     the default seed ratio for torrents to use
         result.put( "seedRatioLimited", Boolean.FALSE );                     // boolean    true if seedRatioLimit is honored by default
-        result.put( "version",  CoreVersion.VERSION);           // string
+        result.put( "version",  "2.80");                         // This must match the RPC API from the spec to make Sonarr happy
+        result.put( "i2p-version",  CoreVersion.VERSION);        // unused
         result.put( "az-rpc-version", VUZE_RPC_VERSION);
         result.put( "az-version", az_version );                  // string
         result.put( "az-mode", az_mode );                                        // string

@@ -25,6 +25,13 @@ public class RPCServlet extends HttpServlet {
     private XMWebUIPlugin _plugin;
 
     @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // Sonarr does a GET to test,
+        // pass it through so it will get the 409 response
+        doPost(req, resp);
+    }
+
+    @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         XMWebUIPlugin plugin;
         synchronized(this) {
