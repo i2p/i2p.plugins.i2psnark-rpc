@@ -80,8 +80,7 @@ import org.klomp.snark.Storage;
 import org.klomp.snark.TrackerClient;
 import org.klomp.snark.bencode.BEncoder;
 
-import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
+import org.json.simple.JsonObject;
 
 @SuppressWarnings({
     "unchecked",
@@ -1189,7 +1188,7 @@ XMWebUIPlugin {
         List<Map> l_engines = new ArrayList<Map>();
         result.put("engines", l_engines);
         for (Engine engine : engines) {
-            JSONObject map = new JSONObject();
+            JsonObject map = new JsonObject();
             l_engines.add(map);
             map.put("name", engine.getName());
             map.put("id", engine.getUID());

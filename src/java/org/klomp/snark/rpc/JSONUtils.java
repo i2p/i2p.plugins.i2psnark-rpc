@@ -20,9 +20,9 @@ package org.klomp.snark.rpc;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
+import org.json.simple.JsonArray;
+import org.json.simple.JsonObject;
+import org.json.simple.Jsoner;
 
 import net.i2p.I2PAppContext;
 import net.i2p.data.Base64;
@@ -47,7 +47,7 @@ public class JSONUtils
 	 */
 	public static Map decodeJSON(String json) {
 		try {
-			Object object = JSONValue.parse(json);
+			Object object = Jsoner.deserialize(json);
 			if (object instanceof Map) {
 				return (Map) object;
 			}
@@ -62,7 +62,7 @@ public class JSONUtils
 	}
 
 	/**
-	 * encodes a map into a JSONObject.
+	 * encodes a map into a JsonObject.
 	 * <P>
 	 * It's recommended that you use {@link #encodeToJSON(Map)} instead
 	 * 
@@ -71,8 +71,8 @@ public class JSONUtils
 	 *
 	 * @since 3.0.1.5
 	 */
-	public static JSONObject encodeToJSONObject(Map map) {
-		JSONObject newMap = new JSONObject((int)(map.size()*1.5));
+	public static JsonObject encodeToJSONObject(Map map) {
+		JsonObject newMap = new JsonObject();
 
 		for (Map.Entry<String, Object> entry: ((Map<String,Object>)map).entrySet()){
 			String key 		= entry.getKey();
@@ -99,14 +99,12 @@ public class JSONUtils
 	 * @since 3.0.1.5
 	 */
 	public static String encodeToJSON(Map map) {
-		JSONObject jobj = encodeToJSONObject(map);		
-		StringBuilder sb = new StringBuilder(8192);
-		jobj.toString( sb );
-		return( sb.toString());
+		JsonObject jobj = encodeToJSONObject(map);		
+		return jobj.toJson();
 	}
 
 	public static String encodeToJSON(Collection list) {
-		return encodeToJSONArray(list).toString();
+		return encodeToJSONArray(list).toJson();
 	}
 
 	private static Object coerce(Object value) {
@@ -153,8 +151,8 @@ public class JSONUtils
 	 *
 	 * @since 3.0.1.5
 	 */
-	private static JSONArray encodeToJSONArray(Collection list) {
-		JSONArray newList = new JSONArray(list.size());
+	private static JsonArray encodeToJSONArray(Collection list) {
+		JsonArray newList = new JsonArray();
 		for ( Object value: list ){
 			newList.add(coerce(value));
 		}

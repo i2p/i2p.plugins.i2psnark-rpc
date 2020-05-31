@@ -11,7 +11,7 @@
     <target name="plugin" depends="war"> 
         <!-- get version number -->
         <buildnumber file="scripts/build.number" />
-        <property name="release.number" value="0.4" />
+        <property name="release.number" value="0.5" />
 
         <!-- we don't bother with an update plugin, everything is in a single war -->
         <copy file="LICENSE.txt" todir="plugin/" overwrite="true" />
