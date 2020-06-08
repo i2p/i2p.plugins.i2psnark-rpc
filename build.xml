@@ -11,7 +11,7 @@
     <target name="plugin" depends="war"> 
         <!-- get version number -->
         <buildnumber file="scripts/build.number" />
-        <property name="release.number" value="0.5" />
+        <property name="release.number" value="0.6" />
 
         <!-- we don't bother with an update plugin, everything is in a single war -->
         <copy file="LICENSE.txt" todir="plugin/" overwrite="true" />
@@ -21,8 +21,8 @@
             <arg value="version=${release.number}-b${build.number}" />
         </exec>
         <exec executable="pack200" failonerror="true">
-            <arg value="-g" />
-            <arg value="plugin/console/webapps/transmission.war.pack" />
+            <arg value="-r" />
+            <arg value="plugin/console/webapps/transmission.war" />
             <arg value="src/build/transmission.war.jar" />
         </exec>
         <input message="Enter su3 signing key password:" addproperty="release.password.su3" />
@@ -47,7 +47,7 @@
     <target name="clean" >
         <ant dir="src" target="clean" />
         <delete file="plugin/plugin.config" />
-        <delete file="plugin/console/webapps/transmission.war.pack" />
+        <delete file="plugin/console/webapps/transmission.war" />
         <delete file="plugin/LICENSE.txt" />
         <delete file="plugin/README.txt" />
         <delete file="plugin.zip" />

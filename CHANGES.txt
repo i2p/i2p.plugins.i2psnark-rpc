@@ -1,3 +1,6 @@
+* 2020-06-08 0.6
+  - Disable pack200
+
 * 2020-05-31 0.5
   - Remove bundled libjson-simple which conflicts with i2p.jar
   - Switch to use libjson-simple 2.x API in i2p.jar
