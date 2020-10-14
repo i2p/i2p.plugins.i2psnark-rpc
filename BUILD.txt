@@ -1,0 +1,64 @@
+Setting up a build environment for I2PSnark-RPC
+===============================================
+
+These build instructions seem to work with both git and mtn.
+
+1. You can build I2PSnark-RPC using either the packages that come with
+an I2P installation or with packages from the I2P code. 
+
+If you have an existing I2P installation and want to use it, you should set
+the I2P environment variable to point to your I2P Installation. If you
+installed I2P via the .jar, this will be $HOME/i2p. On Apple, the I2P
+libraries are found at `/Applications/i2p`. If you have installed I2P using
+a Debian package(i.e. `sudo apt-get install i2p i2p-router`) then you have
+libraries available at /usr/lib/i2p.
+
+If you have the I2P source code in ../i2p relative to the parent directory,
+and have run `ant pkg`, then the libraries will automatically be detected.
+
+        ./i2p/pkg-tmp
+        ./i2p.plugins.i2psnark-rpc
+
+2. Copy plugin.config from the scripts directory into the plugin directory.
+
+        cp scripts/plugin.config plugin/plugin.config
+
+3. If you don't have plugin signing keys yet, you will need to generate them.
+
+To do this with I2P installed in the $HOME directory, you can run the following
+script:
+        
+        java -cp "~/i2p/lib/i2p.jar:/usr/share/java/gnu-getopt.jar" \
+          net.i2p.crypto.SU3File keygen -t RSA_SHA512_4096 \
+          "~/.i2p-plugin-keys/user-su3-public-signing.crt" \
+          "~/.i2p-plugin-keys/user-su3-keystore.ks" \
+          "user@mail.i2p"
+
+There is a helper script to make this process easier at
+[i2pgit.org](https://i2pgit.org/idk/generate-plugin-signing-keys)
+[git.idk.i2p](https://i2pgit.org/idk/generate-plugin-signing-keys). If you
+have never generated plugin signing keys before, you can run the command:
+
+        ./i2pk -p $HOME/.i2p-plugin-keys -n 'user' -s 'user@mail.i2p' generate_keys
+
+4. Edit the plugin/plugin.config file. You will need to change the signer field to
+match your keys, and add a version line to the file.
+
+         name=i2psnark-rpc
+        -signer=zzz-plugin@mail.i2p
+        +signer=user@mail.i2p
+         consoleLinkName=I2PSnark-Remote
+         consoleLinkURL=/transmission/web/
+         description=RPC and Web UI for i2psnark
+         min-java-version=1.7
+         min-jetty-version=9
+         min-i2p-version=0.9.47
+        +version=0.1.2-test
+
+5. You should be ready to build the plugin. Run the script scripts/makeplugin.sh
+from the project root.
+
+        ./scripts/makeplugin.sh
+
+You will be prompted to generate your keystore password. Once entered, the 
+i2psnark-rpc plugin packages will be generated.
