@@ -23,7 +23,8 @@ and have run `ant pkg`, then the libraries will automatically be detected.
 
         cp scripts/plugin.config plugin/plugin.config
 
-3. If you don't have plugin signing keys yet, you will need to generate them.
+3. If you don't have plugin signing keys yet, the build script will generate them.
+However, if you prefer to do this in advance, you can.
 
 To do this with I2P installed in the $HOME directory, you can run the following
 script:
