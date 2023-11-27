@@ -22,9 +22,10 @@
         </exec>
         <exec executable="pack200" failonerror="true">
             <arg value="-r" />
-            <arg value="plugin/console/webapps/transmission.war" />
             <arg value="src/build/transmission.war.jar" />
         </exec>
+        <mkdir dir="plugin/console/webapps" />
+        <copy file="src/build/transmission.war.jar" tofile="plugin/console/webapps/transmission.war" />
         <input message="Enter su3 signing key password:" addproperty="release.password.su3" />
         <fail message="You must enter a password." >
             <condition>
