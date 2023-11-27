@@ -4530,7 +4530,7 @@ XMWebUIPlugin {
                 b32 = "";
             }
             map.put("address", b32);
-            String client = UIUtil.getClientName(peer.getPeerID());
+            String client = UIUtil.getClientName(peer);
             map.put("clientName", client);
             map.put("clientIsChoked", peer.isChoking());
             map.put("clientIsInterested", peer.isInterested());

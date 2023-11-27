@@ -2,10 +2,14 @@ package org.klomp.snark.rpc;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 import net.i2p.data.DataHelper;
 
+import org.klomp.snark.Peer;
 import org.klomp.snark.PeerID;
+import org.klomp.snark.bencode.BEValue;
+import org.klomp.snark.bencode.InvalidBEncodingException;
 
 /**
  * From I2PSnarkServlet
@@ -20,29 +24,68 @@ class UIUtil {
      *  @return "Name w.x.y.z" or "Name"
      *  @since 0.9.30
      */
-    public static String getClientName(PeerID pid) {
-        String ch = pid != null ? pid.toString().substring(0, 4) : "????";
+    public static String getClientName(Peer peer) {
+        PeerID pid = peer.getPeerID();
+        String pids = pid != null ? pid.toString() : "????";
         String client;
-        if ("AwMD".equals(ch))
-            client = "I2PSnark";
-        else if ("BFJT".equals(ch))
-            client = "I2PRufus";
-        else if ("TTMt".equals(ch))
-            client = "I2P-BT";
-        else if ("LUFa".equals(ch))
-            client = "Vuze" + getAzVersion(pid.getID());
-        else if ("CwsL".equals(ch))
-            client = "I2PSnarkXL";
-        else if ("LVhE".equals(ch))
-            client = "XD" + getAzVersion(pid.getID());
-        else if ("ZV".equals(ch.substring(2,4)) || "VUZP".equals(ch))
-            client = "Robert" + getRobtVersion(pid.getID());
-        else if (ch.startsWith("LV")) // LVCS 1.0.2?; LVRS 1.0.4
-            client = "Transmission" + getAzVersion(pid.getID());
-        else if ("LUtU".equals(ch))
-            client = "KTorrent" + getAzVersion(pid.getID());
-        else
-            client = "Unknown (" + ch + ')';
+        if (pids.startsWith("WebSeed@")) {
+            client = pid.toString();
+        } else {
+            String ch = pids.substring(0, 4);
+            boolean addVersion = true;
+            if ("AwMD".equals(ch))
+                client = "I2PSnark";
+            else if ("LUJJ".equals(ch))
+                client = "BiglyBT";
+            else if ("LURF".equals(ch))  // DL
+                client = "Deluge";
+            else if ("LXFC".equals(ch))  // qB
+                client = "qBitorrent";
+            else if ("LUxU".equals(ch))  // LT
+                client = "libtorrent";
+            else if ("BFJT".equals(ch))
+                client = "I2PRufus";
+            else if ("TTMt".equals(ch))
+                client = "I2P-BT";
+            else if ("LUFa".equals(ch))
+                client = "Vuze";
+            else if ("CwsL".equals(ch))
+                client = "I2PSnarkXL";
+            else if ("LVhE".equals(ch))
+                client = "XD" + getAzVersion(pid.getID());
+            else if ("ZV".equals(ch.substring(2,4)) || "VUZP".equals(ch))
+                client = "Robert" + getRobtVersion(pid.getID());
+            else if (ch.startsWith("LV")) // LVCS 1.0.2?; LVRS 1.0.4
+                client = "Transmission";
+            else if ("LUtU".equals(ch))
+                client = "KTorrent";
+            else {
+                // get client + version from handshake
+                client = null;
+                Map<String, BEValue> handshake = peer.getHandshakeMap();
+                if (handshake != null) {
+                    BEValue bev = handshake.get("v");
+                    if (bev != null) {
+                        try {
+                            String s = bev.getString();
+                            if (s.length() > 0) {
+                                if (s.length() > 64)
+                                    s = s.substring(0, 64);
+                                client = DataHelper.escapeHTML(s);
+                                addVersion = false;
+                            }
+                         } catch (InvalidBEncodingException ibee) {}
+                     }
+                 }
+                 if (client == null)
+                    client = "Unknown" + " (" + ch + ')';
+            }
+            if (addVersion) {
+                byte[] id = pid.getID();
+                if (id != null && id[0] == '-')
+                    client += getAzVersion(id);
+            }
+        }
         return client;
     }
 
