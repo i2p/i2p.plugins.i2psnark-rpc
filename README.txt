@@ -10,4 +10,9 @@ transmission-remote 7657 -l
 
 Most basic features are supported. Several advanced features are not supported.
 Some may be added in a future release.
-Please report bugs on zzz.i2p.
+Please report bugs on git.idk.i2p.
+
+NOTE: The transmission.war binary in this plugin may also be used to add
+RPC features to i2psnark-standalone.
+See http://zzz.i2p/topics/3688 or the readme.txt in your i2psnark-standalone
+installation for instructions.
